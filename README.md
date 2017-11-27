@@ -1,7 +1,7 @@
 # silent time command
 
 Linux time command writes a result to stderr.
-Slilent time writes to stdout and command stdout are discarded.
+Silent time writes to the stdout and the command stdout are discarded.
 
 ```
 (time psql -f test.sql) 2>&1 | tee result.log 2>&1
@@ -20,6 +20,12 @@ sys	0m0.004s
 stime psql -f test.sql | tee result.log
 2.850
 ```
+
+## feature
+
+* show no stdout of the command
+* show stderr of the command
+* say same exit code with the command
 
 ## install
 
