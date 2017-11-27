@@ -32,3 +32,7 @@ stime psql -f test.sql | tee result.log
 ```
 go get github.com/74th/stime
 ```
+
+## License
+
+Public Domain
