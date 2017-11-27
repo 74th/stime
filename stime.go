@@ -6,12 +6,13 @@ import (
 	"os"
 	"os/exec"
 	"sync"
+	"syscall"
 	"time"
 )
 
 func main() {
 
-	if len(os.Args) < 1 {
+	if len(os.Args) <= 1 {
 		fmt.Printf("stime <command>...\n")
 		os.Exit(1)
 	}
@@ -22,11 +23,12 @@ func main() {
 	} else {
 		cmd = exec.Command(os.Args[1], os.Args[2:]...)
 	}
-	stderrPipe, _ := cmd.StderrPipe()
 
 	allOutputWait := new(sync.WaitGroup)
 	allOutputWait.Add(1)
+	stderrPipe, _ := cmd.StderrPipe()
 	go func() {
+		// write stderr
 		for {
 			_, err := io.Copy(os.Stderr, stderrPipe)
 			if err != nil {
@@ -42,10 +44,20 @@ func main() {
 	err := cmd.Wait()
 	duration := time.Now().Sub(startTime)
 	fmt.Printf("%.3f", float64(duration)/float64(time.Second))
+
+	// wait for writing all stderr
 	allOutputWait.Wait()
+
 	if err == nil {
 		os.Exit(0)
 	} else {
+		// get exit code
+		// https://qiita.com/hnakamur/items/5e6f22bda8334e190f63
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			if s, ok := exitErr.Sys().(syscall.WaitStatus); ok {
+				os.Exit(s.ExitStatus())
+			}
+		}
 		os.Exit(1)
 	}
 }
