@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
+	"sync"
 	"time"
 )
 
@@ -13,20 +15,34 @@ func main() {
 		fmt.Printf("stime <command>...\n")
 		os.Exit(1)
 	}
-	start := time.Now()
 
-	var err error
+	var cmd *exec.Cmd
 	if len(os.Args) == 2 {
-		err = exec.Command(os.Args[1]).Run()
+		cmd = exec.Command(os.Args[1])
 	} else {
-		err = exec.Command(os.Args[1], os.Args[2:]...).Run()
+		cmd = exec.Command(os.Args[1], os.Args[2:]...)
 	}
-	if err != nil {
-		fmt.Printf("output error\n")
-	}
+	stderrPipe, _ := cmd.StderrPipe()
 
-	duration := time.Now().Sub(start)
+	allOutputWait := new(sync.WaitGroup)
+	allOutputWait.Add(1)
+	go func() {
+		for {
+			_, err := io.Copy(os.Stderr, stderrPipe)
+			if err != nil {
+				allOutputWait.Done()
+				return
+			}
+		}
+	}()
+
+	startTime := time.Now()
+	cmd.Start()
+
+	err := cmd.Wait()
+	duration := time.Now().Sub(startTime)
 	fmt.Printf("%.3f", float64(duration)/float64(time.Second))
+	allOutputWait.Wait()
 	if err == nil {
 		os.Exit(0)
 	} else {
